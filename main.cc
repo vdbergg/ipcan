@@ -141,6 +141,7 @@ int main(int argc, char ** argv) {
 	for (auto i = 0; i < recs.size(); i++)
 	  trie->append(recs[i].c_str(), i);
 	trie->buildIdx();
+    experiment->getMemoryUsedInIndexing();
 
     experiment->compileProportionOfBranchingSizeInBEVA2Level();
     experiment->endIndexingTime();
@@ -198,8 +199,8 @@ int main(int argc, char ** argv) {
 			fetch_time[j] += ((term.tv_sec - middle.tv_sec) * 1000 + (term.tv_usec - middle.tv_usec) * 1.0 / 1000);
 
             experiment->endQueryProcessingTime(pset->getNumberOfActiveNodes(), currentQuery, i);
+            experiment->getMemoryUsedInProcessing(currentQuery.size());
         }
-
 	}
 	int idx = 1;
 	while (true) {
