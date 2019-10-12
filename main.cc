@@ -149,6 +149,7 @@ int main(int argc, char ** argv) {
     auto done = chrono::high_resolution_clock::now();
     cout << "<<<Index time: "<< chrono::duration_cast<chrono::milliseconds>(done - start).count() << " ms>>>\n";
 
+    cout << "processing..." << endl;
 	for (auto i = 0; i < queries.size(); i++) {
 		PrefixActiveNodeSet<char>* pset = new PrefixActiveNodeSet<char>(trie, tau);
 		string currentQuery = "";
