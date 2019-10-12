@@ -149,8 +149,11 @@ int main(int argc, char ** argv) {
     auto done = chrono::high_resolution_clock::now();
     cout << "<<<Index time: "<< chrono::duration_cast<chrono::milliseconds>(done - start).count() << " ms>>>\n";
 
+    int startIndex = stoi(config["qry_number_start"]);
+    int endIndex = stoi(config["qry_number_end"]);
+
     cout << "processing..." << endl;
-	for (auto i = 0; i < queries.size(); i++) {
+    for (auto i = startIndex; i < endIndex; i++) {
 		PrefixActiveNodeSet<char>* pset = new PrefixActiveNodeSet<char>(trie, tau);
 		string currentQuery = "";
 		for (auto j = 1; j <= queries[i].length(); j++) {
