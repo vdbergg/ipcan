@@ -16,6 +16,7 @@ Contact  : dd11@mails.tsinghua.edu.cn
 #include "Trie.h"
 #include "ActiveNode.h"
 #include "header/Experiment.h"
+#include "header/utils.h"
 #include <map>
 #include <sys/time.h>
 #include <fstream>
@@ -34,15 +35,18 @@ void readData(string& filename, vector<string>& recs) {
 	string str;
 	ifstream input(filename, ios::in);
 	while (getline(input, str)) {
-		for (auto i = 0; i < str.length(); i++)
-		  str[i] = tolower(str[i]);
+		for (auto i = 0; i < str.length(); i++) {
+		    str[i] = tolower(str[i]);
+		}
+
+		str = utils::normalize(str);
 		recs.push_back(str);
 	}
 }
 
 map<string, string> loadConfig() {
 
-    std::ifstream is_file("path.cfg");
+    std::ifstream is_file("/home/berg/workspace/ipcan/path.cfg");
     std::string line;
 
     map<string, string> config;
@@ -97,12 +101,14 @@ int main(int argc, char ** argv) {
     int queriesSize = stoi(config["queries_size"]);
 
     string datasetSuffix = queriesSize == 10 ? "_10" : "";
+    const int tau = stoi(config["edit_distance"]);
+    string editDistanceThreshold = to_string(tau);
 
     int dataset = stoi(config["dataset"]);
     switch (dataset) {
         case 0:
             datasetFile += "aol/aol" + sizeSufix + ".txt";
-            queryFile += "aol/q13" + datasetSuffix + ".txt";
+            queryFile += "aol/q17_" + editDistanceThreshold + datasetSuffix + ".txt";
             break;
         case 1:
             datasetFile += "medline/medline" + sizeSufix + ".txt";
@@ -110,23 +116,21 @@ int main(int argc, char ** argv) {
             break;
         case 2:
             datasetFile += "usaddr/usaddr" + sizeSufix + ".txt";
-            queryFile += "usaddr/q13" + datasetSuffix + ".txt";
+            queryFile += "usaddr/q17_" + editDistanceThreshold + datasetSuffix + ".txt";
             break;
         case 3:
             datasetFile += "medline19/medline19" + sizeSufix + ".txt";
-            queryFile += "medline19/q13" + datasetSuffix + ".txt";
+            queryFile += "medline19/q17_" + editDistanceThreshold + datasetSuffix + ".txt";
             break;
         case 4:
             datasetFile += "dblp/dblp" + sizeSufix + ".txt";
-            queryFile += "dblp/q13" + datasetSuffix + ".txt";
+            queryFile += "dblp/q17_" + editDistanceThreshold + datasetSuffix + ".txt";
             break;
         default:
             datasetFile += "aol/aol" + sizeSufix + ".txt";
-            queryFile += "aol/q13" + datasetSuffix + ".txt";
+            queryFile += "aol/q17_" + editDistanceThreshold + datasetSuffix + ".txt";
             break;
     }
-
-	const int tau = stoi(config["edit_distance"]);
 
 	int maxPrefix = 1000;
 	double search_time[maxPrefix];
@@ -141,7 +145,7 @@ int main(int argc, char ** argv) {
 	for (auto i = 0; i < recs.size(); i++)
 	  trie->append(recs[i].c_str(), i);
 	trie->buildIdx();
-    experiment->getMemoryUsedInIndexing();
+//    experiment->getMemoryUsedInIndexing();
 
     experiment->compileProportionOfBranchingSizeInBEVA2Level();
     experiment->endIndexingTime();
@@ -182,28 +186,35 @@ int main(int argc, char ** argv) {
 			// cout << pset->getNumberOfActiveNodes() << " " << resrec.size() << endl;
 
 */
-			vector<int> results;
-			int prev_last = -1;
-			auto tit = trie->ids.begin();
-			for (auto mit = minActiveNodes.begin(); mit != minActiveNodes.end(); mit++) {
-				if (mit->first->last <= prev_last) continue;
-				prev_last = mit->first->last;
-				tit = lower_bound(tit, trie->ids.end(), make_pair(mit->first->id, -1));
-				while (tit != trie->ids.end() && tit->first <= mit->first->last) {
-					results.push_back(tit->second);
-					++tit;
-				}
-			}
-			gettimeofday(&term, NULL);
+            experiment->endQueryProcessingTime(pset->getNumberOfActiveNodes(), currentQuery);
+
+            unordered_map<int, string> outputs;
+            if (currentQuery.size() == 5 || currentQuery.size() == 9 || currentQuery.size() == 13 ||
+                currentQuery.size() == 17) {
+                experiment->initQueryFetchingTime();
+
+                int prev_last = -1;
+                auto tit = trie->ids.begin();
+                for (auto mit = minActiveNodes.begin(); mit != minActiveNodes.end(); mit++) {
+//                    if (mit->first->last <= prev_last) continue;
+//                    prev_last = mit->first->last;
+                    tit = lower_bound(trie->ids.begin(), trie->ids.end(), make_pair(mit->first->id, -1));
+                    while (tit != trie->ids.end() && tit->first <= mit->first->last) {
+                        outputs[tit->second] = recs[tit->second];
+                        ++tit;
+                    }
+                }
+                experiment->endQueryFetchingTime(currentQuery, i, outputs.size());
+//                experiment->getMemoryUsedInProcessing(currentQuery.size());
+            }
+
+            gettimeofday(&term, NULL);
 
 			query_num[j]++;
-			result_num[j] += results.size();
+			result_num[j] += outputs.size();
 			match_num[j] += pset->getNumberOfActiveNodes();
 			search_time[j] += ((middle.tv_sec - start.tv_sec) * 1000 + (middle.tv_usec - start.tv_usec) * 1.0 / 1000);
 			fetch_time[j] += ((term.tv_sec - middle.tv_sec) * 1000 + (term.tv_usec - middle.tv_usec) * 1.0 / 1000);
-
-            experiment->endQueryProcessingTime(pset->getNumberOfActiveNodes(), currentQuery, i);
-            experiment->getMemoryUsedInProcessing(currentQuery.size());
         }
 	}
 	int idx = 1;
