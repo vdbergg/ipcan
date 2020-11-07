@@ -126,6 +126,10 @@ int main(int argc, char ** argv) {
             datasetFile += "dblp/dblp" + sizeSufix + ".txt";
             queryFile += "dblp/q17_" + editDistanceThreshold + datasetSuffix + ".txt";
             break;
+        case 5:
+            datasetFile += "umbc/umbc" + sizeSufix + ".txt";
+            queryFile += "umbc/q17_" + editDistanceThreshold + datasetSuffix + ".txt";
+            break;
         default:
             datasetFile += "aol/aol" + sizeSufix + ".txt";
             queryFile += "aol/q17_" + editDistanceThreshold + datasetSuffix + ".txt";
@@ -189,8 +193,7 @@ int main(int argc, char ** argv) {
             experiment->endQueryProcessingTime(pset->getNumberOfActiveNodes(), currentQuery);
 
             unordered_map<int, string> outputs;
-            if (currentQuery.size() == 5 || currentQuery.size() == 9 || currentQuery.size() == 13 ||
-                currentQuery.size() == 17) {
+            if (currentQuery.size() == 9 || currentQuery.size() == 13 || currentQuery.size() == 17) {
                 experiment->initQueryFetchingTime();
 
                 int prev_last = -1;
