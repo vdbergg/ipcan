@@ -25,7 +25,7 @@ public:
     vector<float> memoryUsedInProcessing;
     vector<long> processingTimes;
     vector<long> fetchingTimes;
-    vector<long> resultsSize;
+    vector<float> resultsSize;
     vector<long> currentQueryProcessingTime;
     vector<long> currentQueryFetchingTime;
     vector<float> activeNodesSizes;
@@ -49,7 +49,7 @@ public:
     void initQueryProcessingTime();
     void initQueryFetchingTime();
     void endQueryProcessingTime(long, string&);
-    void endQueryFetchingTime(string&, int, long);
+    void endQueryFetchingTime(string&, long);
     void compileQueryProcessingTimes(int);
     void proportionOfBranchingSizeInBEVA2Level(int);
     void incrementNumberOfNodes();
