@@ -126,6 +126,10 @@ int main(int argc, char ** argv) {
             datasetFile += "dblp/dblp" + sizeSufix + ".txt";
             queryFile += "dblp/q17_" + editDistanceThreshold + datasetSuffix + ".txt";
             break;
+        case 5:
+            datasetFile += "umbc/umbc" + sizeSufix + ".txt";
+            queryFile += "umbc/q17_" + editDistanceThreshold + datasetSuffix + ".txt";
+            break;
         default:
             datasetFile += "aol/aol" + sizeSufix + ".txt";
             queryFile += "aol/q17_" + editDistanceThreshold + datasetSuffix + ".txt";
@@ -189,23 +193,46 @@ int main(int argc, char ** argv) {
             experiment->endQueryProcessingTime(pset->getNumberOfActiveNodes(), currentQuery);
 
             unordered_map<int, string> outputs;
-            if (currentQuery.size() == 5 || currentQuery.size() == 9 || currentQuery.size() == 13 ||
-                currentQuery.size() == 17) {
+            if (currentQuery.size() == 9 || currentQuery.size() == 13 || currentQuery.size() == 17) {
                 experiment->initQueryFetchingTime();
 
                 int prev_last = -1;
                 auto tit = trie->ids.begin();
-                for (auto mit = minActiveNodes.begin(); mit != minActiveNodes.end(); mit++) {
-//                    if (mit->first->last <= prev_last) continue;
-//                    prev_last = mit->first->last;
+                for (auto mit = pset->PANMap.begin(); mit != pset->PANMap.end(); mit++) {
+                    if (mit->first->last <= prev_last) continue;
+                    prev_last = mit->first->last;
                     tit = lower_bound(trie->ids.begin(), trie->ids.end(), make_pair(mit->first->id, -1));
                     while (tit != trie->ids.end() && tit->first <= mit->first->last) {
                         outputs[tit->second] = recs[tit->second];
                         ++tit;
                     }
                 }
-                experiment->endQueryFetchingTime(currentQuery, i, outputs.size());
+
+//                if (queries[i] == "1990 subaru justy" && !entrou) {
+//                    entrou = true;
+//                    ofstream myfile;
+//                    string filename = "q" + to_string(currentQuery.size()) + "_" + config["edit_distance"] + "_outputs.txt";
+//                    myfile.open(config["experiments_basepath"] + filename, std::ios::app);
+//
+//                    if (myfile.is_open()) {
+//                        for (auto mit = outputs.begin(); mit != outputs.end(); mit++) {
+//                            myfile << mit->second << "\n";
+//                        }
+//                        myfile.close();
+//                    } else {
+//                        cout << "Unable to open file.\n";
+//                    }
+//
+//                    cout <<  "Número de resultados: q" + to_string(currentQuery.size()) + ": " << outputs.size() << endl;
+//                }
+
+                experiment->endQueryFetchingTime(currentQuery, outputs.size());
 //                experiment->getMemoryUsedInProcessing(currentQuery.size());
+            }
+
+            if (currentQuery.length() == queries[i].length()) {
+                experiment->compileQueryProcessingTimes(i);
+                experiment->saveQueryProcessingTime(currentQuery, i);
             }
 
             gettimeofday(&term, NULL);

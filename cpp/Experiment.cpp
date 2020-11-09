@@ -128,7 +128,7 @@ void Experiment::initQueryFetchingTime() {
     this->startQueryFetchingTime = chrono::high_resolution_clock::now();
 }
 
-void Experiment::endQueryFetchingTime(string &query, int queryId, long resultsSize_) {
+void Experiment::endQueryFetchingTime(string &query, long resultsSize_) {
     this->finishQueryFetchingTime = chrono::high_resolution_clock::now();
 
     int currentQueryLength = query.size();
@@ -141,11 +141,6 @@ void Experiment::endQueryFetchingTime(string &query, int queryId, long resultsSi
     this->currentResultsSize[currentQueryLength - 1] = resultsSize_;
     this->fetchingTimes[currentQueryLength - 1] += result;
     this->resultsSize[currentQueryLength - 1] += resultsSize_;
-
-    if (currentQueryLength == MAX_QUERY_CHARACTER) {
-        this->compileQueryProcessingTimes(queryId);
-        this->saveQueryProcessingTime(query, queryId);
-    }
 }
 
 void Experiment::initQueryProcessingTime() {
@@ -195,13 +190,15 @@ void Experiment::compileQueryProcessingTimes(int queryId) {
     for (int i = 0; i < this->processingTimes.size(); i++) {
         long processingTime = this->processingTimes[i] / (queryId + 1);
         long fetchingTime = this->fetchingTimes[i] / (queryId + 1);
-        long resultsSize = this->resultsSize[i] / (queryId + 1);
+        float _resultsSize = this->resultsSize[i] / (queryId + 1);
         float activeNodesSize = this->activeNodesSizes[i] / (queryId + 1);
+        stringstream streamResultSize;
+        streamResultSize << std::fixed << std::setprecision(1) << _resultsSize;
         stringstream stream;
         stream << std::fixed << std::setprecision(1) << activeNodesSize;
         accum += processingTime;
         value += to_string(i + 1) + "\t" + to_string(processingTime) +
-                "\t" + to_string(accum) + "\t" + to_string(fetchingTime) + "\t" + to_string(resultsSize) +
+                "\t" + to_string(accum) + "\t" + to_string(fetchingTime) + "\t" + streamResultSize.str() +
                 "\t" + stream.str() + "\n";
     }
 
