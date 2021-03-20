@@ -123,7 +123,7 @@ void processQuery(Trie<char> *trie, Experiment *experiment, int queryId, int tau
         if (currentQuery.length() == queries[queryId].length()) {
             #ifdef IS_COLLECT_TIME_H
                 experiment->compileQueryProcessingTimes(queryId);
-                experiment->saveQueryProcessingTime(currentQuery, queryId, prefixQuerySizeToFetching);
+                experiment->saveQueryProcessingTime(currentQuery, queryId);
             #endif
 
             #ifdef IS_COLLECT_MEMORY_H
