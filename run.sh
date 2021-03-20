@@ -2,6 +2,7 @@
 
 executable_path=$1
 cfg_path=$2
+free_cache="echo 3 > /proc/sys/vm/drop_caches"
 
 declare -a cfg_array
 
@@ -24,10 +25,12 @@ alg=${cfg_array[7]}
 dataset_basepath=${cfg_array[8]}
 query_basepath=${cfg_array[9]}
 experiments_basepath=${cfg_array[10]}
+is_full_query_instrumentation=${cfg_array[11]}
+has_relevant_queries=${cfg_array[12]}
 
 on_recovery_mode=0
 
-for dt in $(seq ${dataset} 4)
+for dt in $(seq ${dataset} 6)
     do
     if [[ "${dt}" != 1 ]]; then # No have memory sufficient to experiment MEDLINE datasets
         for st in $(seq ${size_type} 3)
@@ -55,10 +58,13 @@ for dt in $(seq ${dataset} 4)
                 echo "dataset_basepath=${dataset_basepath}" >> ${cfg_path}
                 echo "query_basepath=${query_basepath}" >> ${cfg_path}
                 echo "experiments_basepath=${experiments_basepath}" >> ${cfg_path}
+                echo "is_full_query_instrumentation=${is_full_query_instrumentation}" >> ${cfg_path}
+                echo "has_relevant_queries=${has_relevant_queries}" >> ${cfg_path}
 
                 echo "<<<<<<<<<< Start Run >>>>>>>>>>>"
 
                 ${executable_path}
+                ${free_cache} # Free cache
                 [[ $? -eq 0 ]] || exit 1 # break if fail
 
                 echo "<<<<<<<<<< Stop Run >>>>>>>>>>>"
@@ -71,6 +77,6 @@ for dt in $(seq ${dataset} 4)
 
         done
 
-        size_type=0
+        size_type=3
     fi
 done
