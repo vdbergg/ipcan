@@ -2,6 +2,7 @@
 // Created by berg on 12/07/19.
 //
 
+#include <algorithm>
 #include <utility>
 #include <iostream>
 #include <fstream>
@@ -14,16 +15,6 @@
 #include "../header/QueryResult.h"
 
 using namespace std;
-
-const int MAX_QUERY_CHARACTER = 17;
-
-string getFilename(map<string, string> config, const string& filename, int editDistanceThreshold) {
-    string name = config["experiments_basepath"] + filename;
-    name += "_data_set_" + config["dataset"] + "_size_type_" + config["size_type"] +
-                "_tau_" + to_string(editDistanceThreshold) + "_alg_" + config["alg"] + ".txt";
-
-    return name;
-}
 
 string exec(const char* cmd) {
     char buffer[128];
@@ -45,47 +36,13 @@ string exec(const char* cmd) {
 Experiment::Experiment(map<string, string> config) {
     this->config = std::move(config);
     this->editDistanceThreshold = stoi(this->config["edit_distance"]);
-
-    for (int i = 0; i < MAX_QUERY_CHARACTER; i++) {
-        this->processingTimes.push_back(0);
-        this->fetchingTimes.push_back(0);
-        this->resultsSize.push_back(0);
-        this->activeNodesSizes.push_back(0);
-        this->currentActiveNodesSize.push_back(0);
-        this->currentQueryProcessingTime.push_back(0);
-        this->currentQueryFetchingTime.push_back(0);
-        this->currentResultsSize.push_back(0);
-        this->memoryUsedInProcessing.push_back(0);
-    }
-
-    this->recoveryMode = !(this->config["recovery_mode"] == "0");
-
-    if (this->recoveryMode) {
-        string filename = getFilename(this->config, "query_processing_time", this->editDistanceThreshold);
-        this->readQueryProcessingTime(filename);
-    }
 }
 
-void Experiment::readQueryProcessingTime(string& filename) {
-    int count = 0, countLine = 0;
-    int queriesProcessed = 1;
-
-    string str;
-    ifstream input(filename, ios::in);
-    while (getline(input, str)) {
-        vector<string> tokens = utils::split(str, '\t');
-        int tokensSize = tokens.size();
-
-        if (tokensSize == 1) {
-            queriesProcessed = stoi(tokens[0]);
-        } else if (tokensSize == 6 && countLine > 1) {
-            this->processingTimes[count] = stol(tokens[1]) * (queriesProcessed + 1);
-            this->activeNodesSizes[count] = stof(tokens[5]) * (queriesProcessed + 1);
-            this->fetchingTimes[count] = stol(tokens[3]) * (queriesProcessed + 1);
-            this->resultsSize[count] = stol(tokens[4]) * (queriesProcessed + 1);
-            count++;
-        }
-        countLine++;
+void setVector(int position, unsigned long value, vector<long> &v) {
+    if (position < v.size()) {
+        v[position] += value;
+    } else {
+        v.push_back(value);
     }
 }
 
@@ -137,10 +94,20 @@ void Experiment::endQueryFetchingTime(string &query, long resultsSize_) {
             this->finishQueryFetchingTime - this->startQueryFetchingTime
     ).count();
 
-    this->currentQueryFetchingTime[currentQueryLength - 1] = result;
-    this->currentResultsSize[currentQueryLength - 1] = resultsSize_;
-    this->fetchingTimes[currentQueryLength - 1] += result;
-    this->resultsSize[currentQueryLength - 1] += resultsSize_;
+    setVector(currentQueryLength - 1, result, this->currentQueryFetchingTime);
+    setVector(currentQueryLength - 1, resultsSize_, this->currentResultsSize);
+    setVector(currentQueryLength - 1, result, this->fetchingTimes);
+    setVector(currentQueryLength - 1, resultsSize_, this->resultsSize);
+}
+
+void Experiment::endSimpleQueryFetchingTime(unsigned long resultsSize_) {
+    this->finishQueryFetchingTime = chrono::high_resolution_clock::now();
+
+    this->simpleFetchingTimes = chrono::duration_cast<chrono::nanoseconds>(
+            this->finishQueryFetchingTime - this->startQueryFetchingTime
+    ).count();
+
+    this->simpleResultsSize = resultsSize_;
 }
 
 void Experiment::initQueryProcessingTime() {
@@ -156,27 +123,48 @@ void Experiment::endQueryProcessingTime(long activeNodesSize, string &query) {
             this->finishQueryProcessingTime - this->startQueryProcessingTime
     ).count();
 
-    this->currentQueryProcessingTime[currentQueryLength - 1] = result;
-    this->currentActiveNodesSize[currentQueryLength - 1] = activeNodesSize;
-    this->processingTimes[currentQueryLength - 1] += result;
-    this->activeNodesSizes[currentQueryLength - 1] += (float) activeNodesSize;
+    setVector(currentQueryLength - 1, result, this->currentQueryProcessingTime);
+    setVector(currentQueryLength - 1, activeNodesSize, this->currentActiveNodesSize);
+    setVector(currentQueryLength - 1, result, this->processingTimes);
+    setVector(currentQueryLength - 1, activeNodesSize, this->activeNodesSizes);
 }
 
-void Experiment::saveQueryProcessingTime(string& query, int queryId) {
+void Experiment::endSimpleQueryProcessingTime(long activeNodesSize) {
+    this->finishQueryProcessingTime = chrono::high_resolution_clock::now();
+
+    this->simpleProcessingTimes = chrono::duration_cast<chrono::nanoseconds>(
+            this->finishQueryProcessingTime - this->startQueryProcessingTime
+    ).count();
+
+    this->simpleActiveNodesSizes = activeNodesSize;
+}
+
+void Experiment::saveQueryProcessingTime(string& query, int queryId, vector<int> prefixQuerySizeToFetching) {
     string value = query + "\t" + to_string(queryId) + "\n";
 
     long accum = 0;
     for (int j = 0; j < this->currentQueryProcessingTime.size(); j++) {
         accum += this->currentQueryProcessingTime[j];
-        value += to_string(j + 1) + "\t" + to_string(this->currentQueryProcessingTime[j]) + "\t" +
-                 to_string(accum) + "\t" + to_string(this->currentQueryFetchingTime[j]) + "\t" +
-                 to_string(this->currentResultsSize[j]) + "\t" + to_string(this->currentActiveNodesSize[j]) + "\n";
 
-        this->currentQueryProcessingTime[j] = 0;
-        this->currentQueryFetchingTime[j] = 0;
-        this->currentResultsSize[j] = 0;
-        this->currentActiveNodesSize[j] = 0;
+        long queryFetchingTime = 0;
+        long resultsSize_ = 0;
+        if (std::find(prefixQuerySizeToFetching.begin(), prefixQuerySizeToFetching.end(), j + 1) !=
+            prefixQuerySizeToFetching.end()) {
+            queryFetchingTime = this->currentQueryFetchingTime[0];
+            resultsSize_ = this->currentResultsSize[0];
+            this->currentQueryFetchingTime.erase(this->currentQueryFetchingTime.begin());
+            this->currentResultsSize.erase(this->currentResultsSize.begin());
+        }
+
+        value += to_string(j + 1) + "\t" + to_string(this->currentQueryProcessingTime[j]) + "\t" +
+                 to_string(accum) + "\t" + to_string(queryFetchingTime) + "\t" +
+                 to_string(resultsSize_) + "\t" + to_string(this->currentActiveNodesSize[j]) + "\n";
     }
+
+    this->currentResultsSize.clear();
+    this->currentActiveNodesSize.clear();
+    this->currentQueryProcessingTime.clear();
+    this->currentQueryFetchingTime.clear();
 
     writeFile("all_time_values", value, true);
 }
@@ -205,7 +193,15 @@ void Experiment::compileQueryProcessingTimes(int queryId) {
     writeFile("query_processing_time", value);
 }
 
-void Experiment::proportionOfBranchingSizeInBEVA2Level(int size) {
+void Experiment::compileSimpleQueryProcessingTimes(string &query, bool relevantReturned) {
+    string value = query + "\t" + to_string(this->simpleProcessingTimes) + "\t" +
+                   to_string(this->simpleFetchingTimes) + "\t" + to_string(this->simpleResultsSize) + "\t" +
+                   to_string(this->simpleActiveNodesSizes) + "\t" + to_string(int(relevantReturned)) + "\n";
+
+    writeFile("all_time_values", value, true);
+}
+
+void Experiment::proportionOfBranchingSize(int size) {
     if (this->branchSize.find(size) == this->branchSize.end() ) {
         this->branchSize[size] = 1;
     } else {
@@ -213,7 +209,7 @@ void Experiment::proportionOfBranchingSizeInBEVA2Level(int size) {
     }
 }
 
-void Experiment::compileProportionOfBranchingSizeInBEVA2Level() {
+void Experiment::compileProportionOfBranchingSize() {
     string value = "branch_size\tnumber_of_branches\n";
     for (map<int, int>::iterator it = this->branchSize.begin(); it != this->branchSize.end(); ++it) {
         value += to_string(it->first) + "\t" + to_string(it->second) + "\n";
@@ -231,7 +227,7 @@ void Experiment::compileNumberOfNodes() {
     writeFile("number_of_nodes", value);
 }
 
-void Experiment::getMemoryUsedInProcessing(int currentQueryLength) {
+void Experiment::getMemoryUsedInProcessing() {
     pid_t pid = getpid();
     string cmd = "/bin/ps -p " + to_string(pid) + " -o size";
     string output = exec(cmd.c_str());
@@ -240,20 +236,9 @@ void Experiment::getMemoryUsedInProcessing(int currentQueryLength) {
 
     float memoryUsed = stof(tokens[1]) / 1000;
 
-    this->memoryUsedInProcessing[currentQueryLength - 1] = memoryUsed;
+    string value = to_string(memoryUsed) + "\n";
 
-    if (currentQueryLength == MAX_QUERY_CHARACTER) {
-        float avgMemoryUsed = 0;
-        for (float memory : this->memoryUsedInProcessing) {
-            avgMemoryUsed += memory;
-            memory = 0;
-        }
-        avgMemoryUsed /= 4;
-
-        string value = to_string(avgMemoryUsed) + "\n";
-
-        writeFile("memory_used_in_processing", value, true);
-    }
+    writeFile("memory_used_in_processing", value, true);
 }
 
 void Experiment::getMemoryUsedInIndexing() {

@@ -107,7 +107,7 @@ public:
       currentIndexLevel++;
     }
     node->ids.push_back(rid);
-    this->experiment->proportionOfBranchingSizeInBEVA2Level(currentIndexLevel);
+    this->experiment->proportionOfBranchingSize(currentIndexLevel);
     return node;
   }
   void buildIdx() {
