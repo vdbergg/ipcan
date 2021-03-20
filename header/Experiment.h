@@ -59,7 +59,7 @@ public:
     void incrementNumberOfNodes();
     void compileNumberOfNodes();
     void compileProportionOfBranchingSize();
-    void saveQueryProcessingTime(string&, int, vector<int>);
+    void saveQueryProcessingTime(string&, int);
     void getMemoryUsedInIndexing();
     void getMemoryUsedInProcessing();
 
