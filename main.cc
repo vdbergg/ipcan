@@ -80,7 +80,7 @@ void processQuery(Trie<char> *trie, Experiment *experiment, int queryId, int tau
             experiment->initQueryProcessingTime();
         #endif
 
-        char ch = queries[queryId][j - 1];     // current key stroke
+        char ch = queries[queryId][j - 1]; // current key stroke
         currentQuery += ch;
 
         PrefixActiveNodeSet<char>* temp = pset->computeActiveNodeSetIncrementally(ch);
@@ -95,7 +95,8 @@ void processQuery(Trie<char> *trie, Experiment *experiment, int queryId, int tau
         #endif
 
         unordered_map<int, string> outputs;
-        vector<int> prefixQuerySizeToFetching = { 5, 9, 13, 17 };;
+        vector<int> prefixQuerySizeToFetching = { 5, 9, 13, 17 };
+
         if (std::find(prefixQuerySizeToFetching.begin(), prefixQuerySizeToFetching.end(), currentQuery.size()) !=
             prefixQuerySizeToFetching.end()) {
             #ifdef IS_COLLECT_TIME_H
@@ -117,18 +118,18 @@ void processQuery(Trie<char> *trie, Experiment *experiment, int queryId, int tau
             #ifdef IS_COLLECT_TIME_H
                 experiment->endQueryFetchingTime(currentQuery, outputs.size());
             #endif
+        }
+
+        if (currentQuery.length() == queries[queryId].length()) {
+            #ifdef IS_COLLECT_TIME_H
+                experiment->compileQueryProcessingTimes(queryId);
+                experiment->saveQueryProcessingTime(currentQuery, queryId, prefixQuerySizeToFetching);
+            #endif
 
             #ifdef IS_COLLECT_MEMORY_H
                 experiment->getMemoryUsedInProcessing();
             #endif
         }
-
-        #ifdef IS_COLLECT_TIME_H
-            if (currentQuery.length() == queries[queryId].length()) {
-                experiment->compileQueryProcessingTimes(queryId);
-                experiment->saveQueryProcessingTime(currentQuery, queryId, prefixQuerySizeToFetching);
-            }
-        #endif
     }
 }
 
@@ -140,7 +141,7 @@ void processFullQuery(Trie<char> *trie, Experiment *experiment, int queryId, int
     #endif
 
     for (auto j = 1; j <= queries[queryId].length(); j++) {
-        char ch = queries[queryId][j - 1];     // current key stroke
+        char ch = queries[queryId][j - 1]; // current key stroke
 
         PrefixActiveNodeSet<char>* temp = pset->computeActiveNodeSetIncrementally(ch);
         delete pset;
